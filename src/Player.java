@@ -1,4 +1,4 @@
-public class Player {
+public final class Player {
     private final String name;
     private int position;
     private boolean finished;

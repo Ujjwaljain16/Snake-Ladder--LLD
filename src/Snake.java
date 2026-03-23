@@ -1,4 +1,4 @@
-public class Snake {
+public final class Snake {
     private final int head;
     private final int tail;
 

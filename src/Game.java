@@ -6,10 +6,12 @@ public class Game {
     private final Board board;
     private final Dice dice;
     private final DifficultyLevel difficultyLevel;
+    private final MovementStrategy movementStrategy;
+    private final GamePresenter presenter;
     private final List<Player> players;
     private final List<Player> finishedPlayers;
 
-    public Game(int boardSize, int numberOfPlayers, DifficultyLevel difficultyLevel) {
+    public Game(int boardSize, int numberOfPlayers, DifficultyLevel difficultyLevel, GamePresenter presenter) {
         if (boardSize < 2) {
             throw new IllegalArgumentException("Board size should be at least 2.");
         }
@@ -17,10 +19,11 @@ public class Game {
             throw new IllegalArgumentException("Need at least 2 players.");
         }
 
+        this.presenter = presenter;
         this.difficultyLevel = difficultyLevel;
-        Random random = new Random();
-        this.board = new Board(boardSize, difficultyLevel, random);
-        this.dice = new Dice(random);
+        this.movementStrategy = createMovementStrategy(difficultyLevel);
+        this.board = BoardFactory.createBoard(boardSize, difficultyLevel);
+        this.dice = new Dice(new Random());
         this.players = new ArrayList<>();
         this.finishedPlayers = new ArrayList<>();
 
@@ -29,11 +32,13 @@ public class Game {
         }
     }
 
+    private MovementStrategy createMovementStrategy(DifficultyLevel difficulty) {
+        return difficulty == DifficultyLevel.HARD ? new HardMovementStrategy() : new EasyMovementStrategy();
+    }
+
     public void startGame() {
-        System.out.println("\n=== Snake and Ladder Game Started ===");
-        System.out.println("Difficulty: " + difficultyLevel);
-        System.out.println("Target cell: " + board.getTotalCells());
-        board.printBoardElements();
+        presenter.displayGameStart(board.getTotalCells(), difficultyLevel);
+        presenter.displayBoardElements(board);
 
         while (!isGameOver()) {
             for (Player player : players) {
@@ -42,13 +47,13 @@ public class Game {
                 }
 
                 int diceValue = rollDice();
-                System.out.println(player.getName() + " rolled: " + diceValue);
+                presenter.displayPlayerRoll(player, diceValue);
                 movePlayer(player, diceValue);
 
                 if (player.getPosition() == board.getTotalCells() && !player.isFinished()) {
                     player.setFinished(true);
                     finishedPlayers.add(player);
-                    System.out.println(player.getName() + " finished at rank " + finishedPlayers.size());
+                    presenter.displayPlayerFinished(player, finishedPlayers.size());
                 }
 
                 if (isGameOver()) {
@@ -58,7 +63,7 @@ public class Game {
             System.out.println();
         }
 
-        printResult();
+        endGame();
     }
 
     public int rollDice() {
@@ -70,58 +75,15 @@ public class Game {
         int newPosition = currentPosition + diceValue;
 
         if (newPosition > board.getTotalCells()) {
-            System.out.println("  Move skipped. " + player.getName() + " stays at " + currentPosition);
+            presenter.displayMoveSkipped(player, currentPosition);
             return;
         }
 
-        System.out.println("  " + player.getName() + " moves from " + currentPosition + " to " + newPosition);
-        int finalPosition = checkSnakeOrLadder(newPosition);
+        presenter.displayPlayerMove(player, currentPosition, newPosition);
+        int finalPosition = movementStrategy.applyTransitions(newPosition, board, presenter);
         player.setPosition(finalPosition);
 
         System.out.println("  Final position: " + finalPosition);
-    }
-
-    public int checkSnakeOrLadder(int position) {
-        if (difficultyLevel == DifficultyLevel.EASY) {
-            Integer snakeTail = board.getSnakeTail(position);
-            if (snakeTail != null) {
-                System.out.println("  Hit snake at " + position + ", goes down to " + snakeTail);
-                return snakeTail;
-            }
-
-            Integer ladderEnd = board.getLadderEnd(position);
-            if (ladderEnd != null) {
-                System.out.println("  Climbs ladder at " + position + ", goes up to " + ladderEnd);
-                return ladderEnd;
-            }
-
-            return position;
-        }
-
-        int current = position;
-        int safety = 0;
-
-        while (safety <= board.getTotalCells()) {
-            Integer snakeTail = board.getSnakeTail(current);
-            if (snakeTail != null) {
-                System.out.println("  Hit snake at " + current + ", goes down to " + snakeTail);
-                current = snakeTail;
-                safety++;
-                continue;
-            }
-
-            Integer ladderEnd = board.getLadderEnd(current);
-            if (ladderEnd != null) {
-                System.out.println("  Climbs ladder at " + current + ", goes up to " + ladderEnd);
-                current = ladderEnd;
-                safety++;
-                continue;
-            }
-
-            break;
-        }
-
-        return current;
     }
 
     public boolean isGameOver() {
@@ -135,22 +97,7 @@ public class Game {
         return activePlayers <= 1;
     }
 
-    private void printResult() {
-        System.out.println("=== Game Over ===");
-        System.out.println("Finish order:");
-
-        if (finishedPlayers.isEmpty()) {
-            System.out.println("  No one finished.");
-        } else {
-            for (int i = 0; i < finishedPlayers.size(); i++) {
-                System.out.println("  " + (i + 1) + ". " + finishedPlayers.get(i).getName());
-            }
-        }
-
-        for (Player player : players) {
-            if (!player.isFinished()) {
-                System.out.println("Remaining player: " + player.getName() + " at " + player.getPosition());
-            }
-        }
+    private void endGame() {
+        presenter.displayGameOver(finishedPlayers, players);
     }
 }

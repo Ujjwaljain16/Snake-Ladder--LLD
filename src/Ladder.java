@@ -1,4 +1,4 @@
-public class Ladder {
+public final class Ladder {
     private final int start;
     private final int end;
 

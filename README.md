@@ -1,179 +1,244 @@
-# Snake and Ladder (LLD Assignment)
+# Snake and Ladder - Low Level Design
 
-## 1. Class Diagram
+A complete implementation of the Snake and Ladder game demonstrating SOLID principles and design patterns through a turn-based board game with multiple players, random dice rolls, and configurable difficulty levels.
 
-```text
-+-------------------+
-|   DifficultyLevel |
-+-------------------+
-| EASY, HARD        |
-| +fromString()     |
-+-------------------+
-
-+-------------------+         +-------------------+
-|      Player       |         |       Dice        |
-+-------------------+         +-------------------+
-| -name:String      |         | -random:Random    |
-| -position:int     |         +-------------------+
-| -finished:boolean |         | +rollDice():int   |
-+-------------------+         +-------------------+
-| getters/setters   |
-+-------------------+
-
-+-------------------+         +-------------------+
-|      Snake        |         |      Ladder       |
-+-------------------+         +-------------------+
-| -head:int         |         | -start:int        |
-| -tail:int         |         | -end:int          |
-+-------------------+         +-------------------+
-| getters           |         | getters           |
-+-------------------+         +-------------------+
-
-+--------------------------------------------------+
-|                      Board                       |
-+--------------------------------------------------+
-| -size:int                                        |
-| -totalCells:int                                  |
-| -difficultyLevel:DifficultyLevel                 |
-| -random:Random                                   |
-| -snakes:List<Snake>                              |
-| -ladders:List<Ladder>                            |
-| -snakeMap:Map<Integer,Integer>                   |
-| -ladderMap:Map<Integer,Integer>                  |
-+--------------------------------------------------+
-| +getTotalCells():int                             |
-| +getSnakeTail(position):Integer                  |
-| +getLadderEnd(position):Integer                  |
-| +printBoardElements():void                       |
-+--------------------------------------------------+
-
-+--------------------------------------------------+
-|                       Game                       |
-+--------------------------------------------------+
-| -board:Board                                     |
-| -dice:Dice                                       |
-| -difficultyLevel:DifficultyLevel                 |
-| -players:List<Player>                            |
-| -finishedPlayers:List<Player>                    |
-+--------------------------------------------------+
-| +startGame():void                                |
-| +rollDice():int                                  |
-| +movePlayer(player,diceValue):void               |
-| +checkSnakeOrLadder(position):int                |
-| +isGameOver():boolean                            |
-+--------------------------------------------------+
-
-+-------------------+
-|       Main        |
-+-------------------+
-| +main(args):void  |
-+-------------------+
-
-Relationships:
-- Main creates Game
-- Game has Board, Dice, Players
-- Board has Snakes and Ladders
-```
-
-## 2. Code
-
-All complete code is inside `src/`:
-
-- `src/DifficultyLevel.java`
-- `src/Player.java`
-- `src/Snake.java`
-- `src/Ladder.java`
-- `src/Dice.java`
-- `src/Board.java`
-- `src/Game.java`
-- `src/Main.java`
-
-### Run
+## Quick Start
 
 ```bash
+# Compile all Java files
 javac src/*.java
+
+# Run the game
 java -cp src Main
+
+# Game prompts for:
+#   1. Board size (n for n×n board)
+#   2. Number of players
+#   3. Difficulty level (easy or hard)
 ```
 
-### Sample Execution (one run)
-
-```text
-Enter board size n (for n x n): 4
-Enter number of players: 3
-Enter difficulty level (easy/hard): hard
-
-=== Snake and Ladder Game Started ===
-Difficulty: HARD
-Target cell: 16
-Snakes:
-  15 -> 6
-  13 -> 10
-  9 -> 8
-  14 -> 11
-Ladders:
-  2 -> 14
-  5 -> 9
-  12 -> 14
-  6 -> 7
-
-... (turns continue)
-
-=== Game Over ===
-Finish order:
-  1. P1
-  2. P3
-Remaining player: P2 at 10
+Sample input:
+```
+4
+2
+easy
 ```
 
-## 3. Explanation
+This starts a game on a 4×4 board with 2 players on easy difficulty.
 
-### Classes and Responsibilities
+---
 
-- `Player`: stores player name, current position, and whether player already finished.
-- `Snake`: stores one snake (`head -> tail`).
-- `Ladder`: stores one ladder (`start -> end`).
-- `Dice`: gives random value between 1 and 6.
-- `Board`: creates board size `n x n`, randomly places exactly `n` snakes and `n` ladders, and provides lookup methods.
-- `Game`: controls the game loop, player turns, move logic, snake/ladder checks, and game-over condition.
-- `Main`: takes input and starts the game.
+## Class Diagram
 
-### How Board is Generated
+```
+                        ┌──────────────┐
+                        │     Main     │
+                        └────────┬─────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    │            │            │
+                    ▼            ▼            ▼
+        ┌──────────────────┐ ┌──────────┐ ┌──────────────────┐
+        │ ConsoleGame      │ │   Game   │ │ BoardFactory     │
+        │ Presenter        │ │          │ │                  │
+        │ implements       │ │ -board   │ │ +createBoard()   │
+        │ GamePresenter    │ │ -players │ └──────────────────┘
+        │                  │ │ -dice    │
+        │ +displayGameStart│ │ -strategy│
+        │ +displayBoardElm │ │ -present │
+        │ +displayRoll()   │ └────┬─────┘
+        │ +displayMove()   │      │
+        │ +displaySnake()  │      │
+        │ +displayGameOver │      │
+        └──────────────────┘      │
+                             ┌────┴────────┐
+                             │             │
+                    ┌────────┴───┐     ┌───┴─────────┐
+                    ▼            ▼     ▼             ▼
+              ┌──────────┐  ┌──────────────────┐  ┌─────────────┐
+              │  Board   │  │MovementStrategy  │  │    Dice     │
+              │          │  │   (interface)    │  │             │
+              │-snakes   │  └────┬──────┬──────┘  │ -random     │
+              │-ladders  │       │      │         └─────────────┘
+              │-snakeMap │       │      │
+              │-ladderMap│       ▼      ▼
+              └────┬─────┘  ┌─────────┐ ┌──────────────┐
+                   │        │  Easy   │ │    Hard      │
+                   │        │Movement │ │  Movement    │
+              ┌────┴──────┐ │Strategy │ │  Strategy    │
+              │           │ └─────────┘ └──────────────┘
+              ▼           ▼
+          ┌────────┐  ┌────────┐        ┌───────────────────┐
+          │ Snake  │  │ Ladder │        │ <<interface>>     │
+          │        │  │        │        │ GamePresenter     │
+          │-head   │  │-start  │        │                   │
+          │-tail   │  │-end    │        │ +displayGameStart │
+          └────────┘  └────────┘        │ +displayBoard     │
+                                        │ +displayPlayerRoll│
+                                        │ +displayPlayerMove│
+                                        │ +displaySnake     │
+                                        │ +displayLadder    │
+                                        │ +displayGameOver  │
+                                        └───────────────────┘
+```
 
-- Board has cells from `1` to `n^2`.
-- We place exactly `n` snakes and `n` ladders.
-- Snake rules: `head > tail`.
-- Ladder rules: `start < end`.
-- Random placement is done with `Random`.
-- No overlap of snake-head/ladder-start is allowed.
-- Simple cycle prevention is done by checking transition chains before adding a new snake/ladder.
+---
 
-### How Snakes/Ladders are Stored
+## Design Approach & Reasoning
 
-- Objects are stored in lists: `List<Snake>` and `List<Ladder>`.
-- Fast checks are done using maps:
-  - `snakeMap` (`head -> tail`)
-  - `ladderMap` (`start -> end`)
+### Why This Architecture?
 
-### Game Loop Logic
+**Problem**: Traditional implementations mix game logic with output, making testing and reuse difficult.
 
-- Every player starts at `0`.
-- In each turn:
-  - roll dice (`1` to `6`)
-  - try to move to `current + dice`
-  - if beyond `n^2`, move is skipped
-  - check snake/ladder and update final position
-- If a player reaches exactly `n^2`, that player is marked finished.
-- Game keeps running until only one active player remains (`at least 2 players no longer remain`).
+**Solution**: Separate concerns using SOLID principles and design patterns.
 
-### Difficulty Handling
+### SOLID Principles Applied
 
-- `easy`: one snake/ladder jump per move (no chaining).
-- `hard`: chaining allowed (after ladder, if snake exists there, it applies, and so on).
+#### 1. Single Responsibility Principle (SRP)
+Each class has one reason to change:
+- `Game`: Only changes if game rules change
+- `ConsoleGamePresenter`: Only changes if console output format changes
+- `Board`: Only changes if board generation logic changes
+- `MovementStrategy`: Only changes if movement rules change
 
-### Assumptions
+**Benefit**: Classes are focused, testable, and maintainable.
 
-- Minimum board size is 2.
-- Minimum players are 2.
-- Cell `1` and cell `n^2` are not used as snake/ladder start points.
-- Because placement is random, each run gives different board layout and different output.
-# Snake-Ladder--LLD
+#### 2. Open/Closed Principle (OCP)
+Classes are open for extension, closed for modification:
+- New difficulty levels: Create new `MovementStrategy` implementations without modifying `Game`
+- New output formats: Implement `GamePresenter` without touching game logic
+- No need to recompile existing code when adding features
+
+**Benefit**: Future features don't break existing code.
+
+#### 3. Liskov Substitution Principle (LSP)
+Subclasses are substitutable for parent types:
+- `EasyMovementStrategy` and `HardMovementStrategy` can be swapped without breaking `Game`
+- Any `GamePresenter` implementation works identically from `Game`'s perspective
+- All valid implementations produce correct results
+
+**Benefit**: Polymorphism works reliably; code uses abstractions safely.
+
+#### 4. Interface Segregation Principle (ISP)
+Interfaces are focused on specific responsibilities:
+- `GamePresenter` only defines display operations
+- `MovementStrategy` only defines movement behavior
+- No "fat" interfaces forcing unnecessary implementations
+
+**Benefit**: Classes depend only on what they use.
+
+#### 5. Dependency Inversion Principle (DIP)
+High-level modules depend on abstractions, not concrete classes:
+- `Game` depends on `GamePresenter` interface, not `ConsoleGamePresenter`
+- `Game` depends on `MovementStrategy` interface, not concrete implementations
+- `Board` is injected via `BoardFactory`, not hardcoded
+
+**Benefit**: Dependencies are flexible and testable; easy to mock.
+
+### Design Patterns Used
+
+#### Strategy Pattern (MovementStrategy)
+**Purpose**: Encapsulate different movement algorithms so they're interchangeable.
+
+```
+MovementStrategy (interface)
+    ├── EasyMovementStrategy (single transitions)
+    └── HardMovementStrategy (chained transitions)
+```
+
+- **Easy Mode**: Landing on a cell triggers at most one snake/ladder
+- **Hard Mode**: Transitions chain (landing on snake at position X might land on ladder at tail)
+
+**Why**: Allows changing behavior at runtime without modifying Game. Easy to add "nightmare" or "expert" modes.
+
+#### Factory Pattern (BoardFactory)
+**Purpose**: Centralize and simplify object creation.
+
+```java
+Board board = BoardFactory.createBoard(boardSize, difficulty);
+```
+
+- Handles initialization of Board with Random
+- Encapsulates complexity of board setup
+- Single point of change for board creation logic
+
+**Why**: Decouples Game from Board construction details. Easy to change how boards are created.
+
+#### Presenter Pattern (GamePresenter)
+**Purpose**: Separate game logic from output concerns.
+
+```
+GamePresenter (interface)
+    └── ConsoleGamePresenter (current impl)
+        (Future: GuiPresenter, RestPresenter, FilePresenter)
+```
+
+- Game outputs through interface, not System.out
+- ConsoleGamePresenter handles all display operations
+- New output formats added by implementing GamePresenter
+
+**Why**: Testable (mock presenter), extensible (new output formats), reusable (game logic independent of UI).
+
+### Architecture Benefits
+
+| Aspect | Benefit |
+|--------|---------|
+| **Maintainability** | Each class has clear purpose; easy to fix bugs |
+| **Testability** | Game can be tested with mock presenter |
+| **Extensibility** | New features without modifying existing code |
+| **Reusability** | Game logic works with any presentation format |
+| **Flexibility** | Features (difficulty, UI) can be changed at runtime |
+
+---
+
+## Core Classes
+
+| Class | Purpose |
+|-------|---------|
+| `Main` | Entry point, reads user input, creates and starts game |
+| `Game` | Turn-by-turn game logic, win/loss conditions |
+| `Board` | Board generation, snake/ladder placement, O(1) lookups |
+| `Player` | Player state (name, position, finish status) |
+| `Snake` | Snake entity (head, tail) |
+| `Ladder` | Ladder entity (start, end) |
+| `Dice` | Random 1-6 rolls |
+| `DifficultyLevel` | Enum (EASY, HARD) with factory method |
+| `BoardFactory` | Creates boards with random snake/ladder placement |
+| `GamePresenter` | Interface for all display operations |
+| `ConsoleGamePresenter` | Console implementation of GamePresenter |
+| `MovementStrategy` | Interface for movement rules |
+| `EasyMovementStrategy` | Single snake/ladder jump per move |
+| `HardMovementStrategy` | Chained jumps allowed |
+
+---
+
+## Game Rules
+
+1. **Board**: n×n grid with cells numbered 1 to n²
+2. **Snakes**: n randomly placed snakes, each head > tail (move down)
+3. **Ladders**: n randomly placed ladders, each start < end (move up)
+4. **No Overlaps**: Snake/ladder start positions don't overlap
+5. **No Cycles**: Placements don't create infinite loops
+
+### Turn Sequence
+
+1. Players take turns in order
+2. Each turn: Roll dice → Move → Apply snake/ladder
+3. Move = current position + dice value
+4. Skip if new position > n² (can't move beyond board)
+5. Apply snake/ladder based on difficulty
+6. If position = n², player finishes and is removed
+
+### Winning
+
+- **Win**: Reach position n² exactly
+- **Finish Order**: Tracked as players win
+- **Game Over**: Only 1 active player remains
+- **Output**: Winners listed in order, remaining players shown
+
+### Difficulty Modes
+
+- **Easy**: Single transition (one snake OR one ladder per cell)
+- **Hard**: Chained transitions (landing on snake might trigger ladder at tail, creating chain)
+---
+`LLM was used to polish the content the idea and approch was original `

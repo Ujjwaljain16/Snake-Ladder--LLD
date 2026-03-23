@@ -1,11 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
+import java.util.*;
 public class Board {
     private final int size;
     private final int totalCells;
@@ -162,16 +155,11 @@ public class Board {
         return ladderMap.get(position);
     }
 
-    public void printBoardElements() {
-        System.out.println("Snakes:");
-        for (Snake snake : snakes) {
-            System.out.println("  " + snake.getHead() + " -> " + snake.getTail());
-        }
+    public List<Snake> getSnakes() {
+        return snakes;
+    }
 
-        System.out.println("Ladders:");
-        for (Ladder ladder : ladders) {
-            System.out.println("  " + ladder.getStart() + " -> " + ladder.getEnd());
-        }
-        System.out.println();
+    public List<Ladder> getLadders() {
+        return ladders;
     }
 }
